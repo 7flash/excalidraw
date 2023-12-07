@@ -33,6 +33,7 @@ import { AppState } from "../types";
 import { Mutable } from "../utility-types";
 import { getFontString } from "../utils";
 import { register } from "./register";
+import { StoreAction } from "./types";
 
 export const actionUnbindText = register({
   name: "unbindText",
@@ -80,7 +81,7 @@ export const actionUnbindText = register({
     return {
       elements,
       appState,
-      commitToStore: true,
+      storeAction: StoreAction.RECORD,
     };
   },
 });
@@ -149,7 +150,7 @@ export const actionBindText = register({
     return {
       elements: pushTextAboveContainer(elements, container, textElement),
       appState: { ...appState, selectedElementIds: { [container.id]: true } },
-      commitToStore: true,
+      storeAction: StoreAction.RECORD,
     };
   },
 });
@@ -299,7 +300,7 @@ export const actionWrapTextInContainer = register({
         ...appState,
         selectedElementIds: containerIds,
       },
-      commitToStore: true,
+      storeAction: StoreAction.RECORD,
     };
   },
 });

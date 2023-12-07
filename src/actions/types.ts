@@ -10,6 +10,12 @@ import { MarkOptional } from "../utility-types";
 
 export type ActionSource = "ui" | "keyboard" | "contextMenu" | "api";
 
+export enum StoreAction {
+  NONE = "none",
+  UPDATE = "update",
+  RECORD = "record",
+}
+
 /** if false, the action should be prevented */
 export type ActionResult =
   | {
@@ -19,8 +25,7 @@ export type ActionResult =
         "offsetTop" | "offsetLeft" | "width" | "height"
       > | null;
       files?: BinaryFiles | null;
-      commitToStore: boolean;
-      shouldOnlyUpdateSnapshot?: boolean;
+      storeAction: StoreAction;
       replaceFiles?: boolean;
     }
   | false;

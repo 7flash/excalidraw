@@ -39,19 +39,19 @@ export class Store implements IStore {
     [elementsChange: ElementsChange, appStateChange: AppStateChange]
   >();
 
-  private onlyUpdateSnapshot: boolean = false;
   private recordingChanges: boolean = false;
+  private updatingSnapshot: boolean = false;
   private isRemoteUpdate: boolean = false;
 
-  private snapshot = Snapshot.empty();
+  public snapshot = Snapshot.empty();
+
+  public updateSnapshot() {
+    this.updatingSnapshot = true;
+  }
 
   // Suspicious that this is called so many places. Seems error-prone.
   public resumeRecording() {
     this.recordingChanges = true;
-  }
-
-  public shouldOnlyUpdateSnapshot() {
-    this.onlyUpdateSnapshot = true;
   }
 
   public markRemoteUpdate() {
@@ -67,10 +67,9 @@ export class Store implements IStore {
     return this.onStoreIncrementEmitter.on(callback);
   }
 
-  // TODO_UNDO: double check if it makes sense keeping the dependency on whole Scene here
   public capture(scene: Scene, appState: AppState): void {
     // Quick exit for irrelevant changes
-    if (!this.recordingChanges && !this.onlyUpdateSnapshot) {
+    if (!this.recordingChanges && !this.updatingSnapshot) {
       return;
     }
 
@@ -93,9 +92,7 @@ export class Store implements IStore {
       // Calculate and record the changes based on the previous and next snapshot
       if (
         this.recordingChanges &&
-        !this.onlyUpdateSnapshot &&
         !!this.snapshot.options.sceneVersionNonce // Special case when versionNonce is undefined, meaning it's first initialization of the Scene, which we don't want to record
-        // TODO_UNDO: think if there are some edge cases which break the above invariant (~versionNonce is empty !== first scene initialization)
       ) {
         const elementsChange = nextSnapshot.options.didElementsChange
           ? ElementsChange.calculate(
@@ -121,8 +118,8 @@ export class Store implements IStore {
     }
 
     // Reset props
+    this.updatingSnapshot = false;
     this.recordingChanges = false;
-    this.onlyUpdateSnapshot = false;
     this.isRemoteUpdate = false;
   }
 
@@ -216,7 +213,7 @@ class Snapshot {
     const clonedElements = new Map();
 
     for (const [id, prevElement] of this.elements.entries()) {
-      // clone previous elements, never delete, in case nextElements would be just a subset (i.e. collab)
+      // clone previous elements, never delete, in case nextElements would be just a subset of previous elements (i.e. collab)
       clonedElements.set(id, prevElement);
     }
 

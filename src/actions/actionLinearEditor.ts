@@ -2,6 +2,7 @@ import { LinearElementEditor } from "../element/linearElementEditor";
 import { isLinearElement } from "../element/typeChecks";
 import { ExcalidrawLinearElement } from "../element/types";
 import { register } from "./register";
+import { StoreAction } from "./types";
 
 export const actionToggleLinearEditor = register({
   name: "toggleLinearEditor",
@@ -30,7 +31,8 @@ export const actionToggleLinearEditor = register({
         ...appState,
         editingLinearElement,
       },
-      commitToStore: false,
+      // Why not to record this action?
+      storeAction: StoreAction.NONE,
     };
   },
   contextItemLabel: (elements, appState, app) => {

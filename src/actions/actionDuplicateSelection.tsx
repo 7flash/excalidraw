@@ -14,7 +14,7 @@ import {
 } from "../groups";
 import { AppState } from "../types";
 import { fixBindingsAfterDuplication } from "../element/binding";
-import { ActionResult } from "./types";
+import { ActionResult, StoreAction } from "./types";
 import { GRID_SIZE } from "../constants";
 import {
   bindTextToShapeAfterDuplication,
@@ -47,13 +47,13 @@ export const actionDuplicateSelection = register({
       return {
         elements,
         appState: ret.appState,
-        commitToStore: true,
+        storeAction: StoreAction.RECORD,
       };
     }
 
     return {
       ...duplicateElements(elements, appState),
-      commitToStore: true,
+      storeAction: StoreAction.RECORD,
     };
   },
   contextItemLabel: "labels.duplicateSelection",

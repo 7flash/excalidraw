@@ -13,6 +13,7 @@ import {
   NonDeletedExcalidrawElement,
   Theme,
 } from "./types";
+import { StoreAction } from "../actions/types";
 
 type EmbeddedLink =
   | ({
@@ -268,7 +269,8 @@ export const actionSetEmbeddableAsActiveTool = register({
           type: "embeddable",
         }),
       },
-      commitToStore: false,
+      storeAction: StoreAction.NONE,
+
     };
   },
 });

@@ -3,6 +3,7 @@ import { ExcalidrawElement } from "../element/types";
 import { KEYS } from "../keys";
 import { arrayToMap } from "../utils";
 import { register } from "./register";
+import { StoreAction } from "./types";
 
 const shouldLock = (elements: readonly ExcalidrawElement[]) =>
   elements.every((el) => !el.locked);
@@ -43,7 +44,7 @@ export const actionToggleElementLock = register({
           ? null
           : appState.selectedLinearElement,
       },
-      commitToStore: true,
+      storeAction: StoreAction.RECORD,
     };
   },
   contextItemLabel: (elements, appState, app) => {
@@ -97,7 +98,7 @@ export const actionUnlockAllElements = register({
           lockedElements.map((el) => [el.id, true]),
         ),
       },
-      commitToStore: true,
+      storeAction: StoreAction.RECORD,
     };
   },
   contextItemLabel: "labels.elementLock.unlockAll",

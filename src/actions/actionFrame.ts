@@ -7,6 +7,7 @@ import { AppClassProperties, AppState } from "../types";
 import { updateActiveTool } from "../utils";
 import { setCursorForShape } from "../cursor";
 import { register } from "./register";
+import { StoreAction } from "./types";
 
 const isSingleFrameSelected = (appState: AppState, app: AppClassProperties) => {
   const selectedElements = app.scene.getSelectedElements(appState);
@@ -35,14 +36,15 @@ export const actionSelectAllElementsInFrame = register({
             return acc;
           }, {} as Record<ExcalidrawElement["id"], true>),
         },
-        commitToStore: false,
+        // Why not to record these actions?
+        storeAction: StoreAction.NONE,
       };
     }
 
     return {
       elements,
       appState,
-      commitToStore: false,
+      storeAction: StoreAction.NONE,
     };
   },
   contextItemLabel: "labels.selectAllElementsInFrame",
@@ -65,14 +67,14 @@ export const actionRemoveAllElementsFromFrame = register({
             [selectedFrame.id]: true,
           },
         },
-        commitToStore: true,
+        storeAction: StoreAction.NONE,
       };
     }
 
     return {
       elements,
       appState,
-      commitToStore: false,
+      storeAction: StoreAction.NONE,
     };
   },
   contextItemLabel: "labels.removeAllElementsFromFrame",
@@ -94,7 +96,7 @@ export const actionupdateFrameRendering = register({
           enabled: !appState.frameRendering.enabled,
         },
       },
-      commitToStore: false,
+      storeAction: StoreAction.NONE,
     };
   },
   contextItemLabel: "labels.updateFrameRendering",
@@ -122,7 +124,7 @@ export const actionSetFrameAsActiveTool = register({
           type: "frame",
         }),
       },
-      commitToStore: false,
+      storeAction: StoreAction.NONE,
     };
   },
   keyTest: (event) =>

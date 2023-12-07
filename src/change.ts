@@ -194,7 +194,7 @@ export class AppStateChange implements Change<AppState> {
   }
 
   private checkForVisibleChanges(
-    appState: AppState,
+    appState: ObservedAppState,
     elements: Map<string, ExcalidrawElement>,
   ): boolean {
     const containsStandaloneDifference = Delta.containsDifference(
@@ -267,7 +267,7 @@ export class AppStateChange implements Change<AppState> {
 
   private static checkForSelectedElementsDifferences(
     deltaIds: ObservedElementsAppState["selectedElementIds"] | undefined,
-    appState: AppState,
+    appState: Pick<AppState, "selectedElementIds">,
     elements: Map<string, ExcalidrawElement>,
   ) {
     if (!deltaIds) {
@@ -275,12 +275,11 @@ export class AppStateChange implements Change<AppState> {
       return;
     }
 
-    const selectedElementIds = Object.keys(appState.selectedElementIds);
     for (const id of Object.keys(deltaIds)) {
       const element = elements.get(id);
 
       if (element && !element.isDeleted) {
-        if (selectedElementIds.includes(id)) {
+        if (appState.selectedElementIds[id]) {
           // Element is already selected
           return;
         }
@@ -391,14 +390,13 @@ export class ElementsChange implements Change<Map<string, ExcalidrawElement>> {
 
     const deltas = new Map<string, Delta<T>>();
 
-    // TODO_UNDO: this might be needed only in same edge cases, like during persist, when isDeleted elements are removed
+    // This might be needed only in same edge cases, like during collab, when `isDeleted` elements get removed
     for (const prevElement of prevElements.values()) {
       const nextElement = nextElements.get(prevElement.id);
 
       // Element got removed
       if (!nextElement) {
-        const { id, ...partial } = prevElement;
-        const from = { ...partial, isDeleted: false } as T;
+        const from = { ...prevElement, isDeleted: false } as T;
         const to = { isDeleted: true } as T;
 
         const delta = Delta.create(
@@ -416,9 +414,16 @@ export class ElementsChange implements Change<Map<string, ExcalidrawElement>> {
 
       // Element got added
       if (!prevElement) {
-        const { id, ...partial } = nextElement;
+        if (nextElement.isDeleted) {
+          // Special case when an element is added as deleted (i.e. through the API).
+          // Creating a delta for it wouldn't make sense, as it would go from isDeleted `true` into `true` again.
+          // We are going to skip it for now, later we could be have separate `added` & `removed` entries in the elements change,
+          // so that we would distinguish between actual addition, removal and "soft" (un)deletion.
+          continue;
+        }
+
         const from = { isDeleted: true } as T;
-        const to = { ...partial, isDeleted: false } as T;
+        const to = { ...nextElement, isDeleted: false } as T;
 
         const delta = Delta.create(
           from,
@@ -479,8 +484,8 @@ export class ElementsChange implements Change<Map<string, ExcalidrawElement>> {
       if (existingElement) {
         // Check if there was actually any visible change before applying
         if (!containsVisibleDifference) {
-          if (existingElement.isDeleted !== !!delta.to.isDeleted) {
-            // Special case, when delta (un)deletes element, it results in a visible change
+          // Special case, when delta deletes element, it results in a visible change
+          if (existingElement.isDeleted && delta.to.isDeleted === false) {
             containsVisibleDifference = true;
           } else if (!existingElement.isDeleted) {
             // Check for any difference on a visible element
@@ -550,7 +555,9 @@ export class ElementsChange implements Change<Map<string, ExcalidrawElement>> {
 
   private static stripIrrelevantProps(delta: Partial<ExcalidrawElement>) {
     // TODO_UNDO: is seed correctly stripped?
-    const { updated, version, versionNonce, seed, ...strippedDelta } = delta;
+    const { id, updated, version, versionNonce, seed, ...strippedDelta } =
+      delta;
+
     return strippedDelta;
   }
 }

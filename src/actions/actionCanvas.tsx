@@ -28,6 +28,7 @@ import {
 import { DEFAULT_CANVAS_BACKGROUND_PICKS } from "../colors";
 import { Bounds } from "../element/bounds";
 import { setCursor } from "../cursor";
+import { StoreAction } from "./types";
 
 export const actionChangeViewBackgroundColor = register({
   name: "changeViewBackgroundColor",
@@ -41,7 +42,9 @@ export const actionChangeViewBackgroundColor = register({
   perform: (_, appState, value) => {
     return {
       appState: { ...appState, ...value },
-      commitToStore: !!value.viewBackgroundColor,
+      storeAction: !!value.viewBackgroundColor
+        ? StoreAction.RECORD
+        : StoreAction.NONE,
     };
   },
   PanelComponent: ({ elements, appState, updateData, appProps }) => {
@@ -94,7 +97,7 @@ export const actionClearCanvas = register({
             ? { ...appState.activeTool, type: "selection" }
             : appState.activeTool,
       },
-      commitToStore: true,
+      storeAction: StoreAction.RECORD,
     };
   },
 });
@@ -116,7 +119,7 @@ export const actionZoomIn = register({
           appState,
         ),
       },
-      commitToStore: false,
+      storeAction: StoreAction.NONE,
     };
   },
   PanelComponent: ({ updateData, appState }) => (
@@ -154,7 +157,7 @@ export const actionZoomOut = register({
           appState,
         ),
       },
-      commitToStore: false,
+      storeAction: StoreAction.NONE,
     };
   },
   PanelComponent: ({ updateData, appState }) => (
@@ -192,7 +195,7 @@ export const actionResetZoom = register({
           appState,
         ),
       },
-      commitToStore: false,
+      storeAction: StoreAction.NONE,
     };
   },
   PanelComponent: ({ updateData, appState }) => (
@@ -315,7 +318,7 @@ export const zoomToFit = ({
       scrollY,
       zoom: { value: newZoomValue },
     },
-    commitToStore: false,
+    storeAction: StoreAction.NONE,
   };
 };
 
@@ -385,7 +388,7 @@ export const actionToggleTheme = register({
         theme:
           value || (appState.theme === THEME.LIGHT ? THEME.DARK : THEME.LIGHT),
       },
-      commitToStore: false,
+      storeAction: StoreAction.NONE,
     };
   },
   keyTest: (event) => event.altKey && event.shiftKey && event.code === CODES.D,
@@ -422,7 +425,7 @@ export const actionToggleEraserTool = register({
         activeEmbeddable: null,
         activeTool,
       },
-      commitToStore: true,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) => event.key === KEYS.E,
@@ -457,7 +460,7 @@ export const actionToggleHandTool = register({
         activeEmbeddable: null,
         activeTool,
       },
-      commitToStore: true,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) =>

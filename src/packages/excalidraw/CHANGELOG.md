@@ -1,16 +1,5 @@
 # Changelog
 
-## Unreleased
-
-### Features
-
-<!-- TODO_UNDO: TBD -->
-
-### Breaking Changes
-
-<!-- TODO_UNDO: TBD -->
-
-
 <!--
 Guidelines for changelog:
 The change should be grouped under one of the below section and must contain PR link.
@@ -21,6 +10,16 @@ The change should be grouped under one of the below section and must contain PR 
 
 Please add the latest change on the top under the correct section.
 -->
+
+## Unreleased
+
+### Features
+
+- Support for multiplayer undo / redo [#7348](https://github.com/excalidraw/excalidraw/pull/7348).
+
+### Breaking Changes
+
+- Renamed required `updatedScene` parameter from `commitToHistory` into `commitToStore` [#7348](https://github.com/excalidraw/excalidraw/pull/7348).
 
 ## 0.17.0 (2023-11-14)
 

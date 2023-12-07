@@ -40,7 +40,7 @@ import {
 import { createRedoAction, createUndoAction } from "../actions/actionHistory";
 import { ActionManager } from "../actions/manager";
 import { actions } from "../actions/register";
-import { ActionResult } from "../actions/types";
+import { ActionResult, StoreAction } from "../actions/types";
 import { trackEvent } from "../analytics";
 import {
   getDefaultAppState,
@@ -1425,12 +1425,12 @@ class App extends React.Component<AppProps, AppState> {
           if (shouldUpdateStrokeColor) {
             this.syncActionResult({
               appState: { ...this.state, currentItemStrokeColor: color },
-              commitToStore: true,
+              storeAction: StoreAction.RECORD,
             });
           } else {
             this.syncActionResult({
               appState: { ...this.state, currentItemBackgroundColor: color },
-              commitToStore: true,
+              storeAction: StoreAction.RECORD,
             });
           }
         } else {
@@ -1469,10 +1469,11 @@ class App extends React.Component<AppProps, AppState> {
           }
         });
         this.scene.replaceAllElements(actionResult.elements);
-        if (actionResult.commitToStore) {
+
+        if (actionResult.storeAction === StoreAction.UPDATE) {
+          this.store.updateSnapshot();
+        } else if (actionResult.storeAction === StoreAction.RECORD) {
           this.store.resumeRecording();
-        } else if (actionResult.shouldOnlyUpdateSnapshot) {
-          this.store.shouldOnlyUpdateSnapshot();
         }
       }
 
@@ -1484,10 +1485,10 @@ class App extends React.Component<AppProps, AppState> {
       }
 
       if (actionResult.appState || editingElement || this.state.contextMenu) {
-        if (actionResult.commitToStore) {
+        if (actionResult.storeAction === StoreAction.UPDATE) {
+          this.store.updateSnapshot();
+        } else if (actionResult.storeAction === StoreAction.RECORD) {
           this.store.resumeRecording();
-        } else if (actionResult.shouldOnlyUpdateSnapshot) {
-          this.store.shouldOnlyUpdateSnapshot();
         }
 
         let viewModeEnabled = actionResult?.appState?.viewModeEnabled || false;
@@ -1667,7 +1668,7 @@ class App extends React.Component<AppProps, AppState> {
     this.resetHistory();
     this.syncActionResult({
       ...scene,
-      commitToStore: true,
+      storeAction: StoreAction.RECORD,
     });
   };
 
@@ -1757,7 +1758,10 @@ class App extends React.Component<AppProps, AppState> {
           configurable: true,
           value: this.history,
         },
-        // TODO_UNDO: add store
+        store: {
+          configurable: true,
+          value: this.store,
+        },
       });
     }
 
@@ -2072,8 +2076,6 @@ class App extends React.Component<AppProps, AppState> {
       this.state.selectedLinearElement &&
       !this.state.selectedElementIds[this.state.selectedLinearElement.elementId]
     ) {
-      // TODO_UNDO: re-check, as this is causing a bug when a single selected linear element is deleted, undo action does bring it unselected
-
       // To make sure `selectedLinearElement` is in sync with `selectedElementIds`, however this shouldn't be needed once
       // we have a single API to update `selectedElementIds`
       this.setState({ selectedLinearElement: null });
@@ -2099,9 +2101,6 @@ class App extends React.Component<AppProps, AppState> {
       );
     }
 
-    // TODO_UNDO: we could wrap this in requestIdleCallback when available
-    // - specify timeout 0 (so it is triggered immediately)
-    // - debounce on every frame (16ms?)
     this.store.capture(this.scene, this.state);
 
     // Do not notify consumers if we're still loading the scene. Among other
@@ -2945,12 +2944,14 @@ class App extends React.Component<AppProps, AppState> {
       commitToStore?: SceneData["commitToStore"];
       isRemoteUpdate?: SceneData["isRemoteUpdate"];
     }) => {
+      // Always keep the store snapshot in sync
+      this.store.updateSnapshot();
+
       if (sceneData.commitToStore) {
         this.store.resumeRecording();
       }
 
       if (sceneData.isRemoteUpdate) {
-        this.store.shouldOnlyUpdateSnapshot();
         this.store.markRemoteUpdate();
       }
 
@@ -7285,8 +7286,6 @@ class App extends React.Component<AppProps, AppState> {
         }));
       }
 
-      // TODO_UNDO: uncovered / weird cases, anything that cancels selection might need to end-up also in the history entry as well (not just pointer up)
-      // TODO_UNDO: add esc to cancel current selection
       if (
         activeTool.type !== "selection" ||
         isSomeElementSelected(this.scene.getNonDeletedElements(), this.state) ||
@@ -7949,7 +7948,7 @@ class App extends React.Component<AppProps, AppState> {
                 isLoading: false,
               },
               replaceFiles: true,
-              commitToStore: true,
+              storeAction: StoreAction.RECORD,
             });
             return;
           } catch (error: any) {
@@ -8049,7 +8048,7 @@ class App extends React.Component<AppProps, AppState> {
             isLoading: false,
           },
           replaceFiles: true,
-          commitToStore: true,
+          storeAction: StoreAction.RECORD,
         });
       } else if (ret.type === MIME_TYPES.excalidrawlib) {
         await this.library
@@ -8661,6 +8660,7 @@ declare global {
       setState: React.Component<any, AppState>["setState"];
       app: InstanceType<typeof App>;
       history: History;
+      store: Store;
     };
   }
 }

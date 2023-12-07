@@ -67,6 +67,11 @@ export class API {
     return h.history.undoStack;
   };
 
+  static getRedoStack = () => {
+    // @ts-ignore
+    return h.history.redoStack;
+  };
+
   static clearSelection = () => {
     // @ts-ignore
     h.app.clearSelection(null);
