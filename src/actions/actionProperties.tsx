@@ -297,7 +297,7 @@ export const actionChangeBackgroundColor = register({
         ...appState,
         ...value,
       },
-      commitToStore: !!value.currentItemBackgroundColor
+      storeAction: !!value.currentItemBackgroundColor
         ? StoreAction.RECORD
         : StoreAction.NONE,
     };
