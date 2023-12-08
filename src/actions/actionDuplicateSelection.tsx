@@ -47,13 +47,13 @@ export const actionDuplicateSelection = register({
       return {
         elements,
         appState: ret.appState,
-        storeAction: StoreAction.RECORD,
+        storeAction: StoreAction.CAPTURE,
       };
     }
 
     return {
       ...duplicateElements(elements, appState),
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   contextItemLabel: "labels.duplicateSelection",

@@ -44,7 +44,7 @@ export const actionToggleElementLock = register({
           ? null
           : appState.selectedLinearElement,
       },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   contextItemLabel: (elements, appState, app) => {
@@ -98,7 +98,7 @@ export const actionUnlockAllElements = register({
           lockedElements.map((el) => [el.id, true]),
         ),
       },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   contextItemLabel: "labels.elementLock.unlockAll",

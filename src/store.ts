@@ -21,6 +21,11 @@ const getObservedAppState = (appState: AppState): ObservedAppState => {
 
 export interface IStore {
   capture(scene: Scene, appState: AppState): void;
+  updateSnapshot(
+    scene: Scene,
+    appState: AppState,
+    isRemoteUpdate?: boolean,
+  ): void;
   listen(
     callback: (
       elementsChange: ElementsChange,
@@ -39,23 +44,18 @@ export class Store implements IStore {
     [elementsChange: ElementsChange, appStateChange: AppStateChange]
   >();
 
-  private recordingChanges: boolean = false;
+  private capturingChanges: boolean = false;
   private updatingSnapshot: boolean = false;
-  private isRemoteUpdate: boolean = false;
 
   public snapshot = Snapshot.empty();
 
-  public updateSnapshot() {
+  public scheduleSnapshotting() {
     this.updatingSnapshot = true;
   }
 
   // Suspicious that this is called so many places. Seems error-prone.
-  public resumeRecording() {
-    this.recordingChanges = true;
-  }
-
-  public markRemoteUpdate() {
-    this.isRemoteUpdate = true;
+  public resumeCapturing() {
+    this.capturingChanges = true;
   }
 
   public listen(
@@ -69,30 +69,18 @@ export class Store implements IStore {
 
   public capture(scene: Scene, appState: AppState): void {
     // Quick exit for irrelevant changes
-    if (!this.recordingChanges && !this.updatingSnapshot) {
+    if (!this.capturingChanges && !this.updatingSnapshot) {
       return;
     }
 
-    const nextElements = scene.getElementsMapIncludingDeleted();
-    const snapshotOptions: CloningOptions = {
-      isRemoteUpdate: this.isRemoteUpdate,
-      editingElementId: appState.editingElement?.id,
-      sceneVersionNonce: scene.getVersionNonce(),
-    };
-
-    // Efficiently clone the store snapshot
-    const nextSnapshot = this.snapshot.clone(
-      nextElements,
-      appState,
-      snapshotOptions,
-    );
+    const nextSnapshot = this.updateSnapshot(scene, appState);
 
     // Optimisation, don't continue if nothing has changed
     if (this.snapshot !== nextSnapshot) {
       // Calculate and record the changes based on the previous and next snapshot
       if (
-        this.recordingChanges &&
-        !!this.snapshot.options.sceneVersionNonce // Special case when versionNonce is undefined, meaning it's first initialization of the Scene, which we don't want to record
+        this.capturingChanges &&
+        !!this.snapshot.options.sceneVersionNonce // Special case when versionNonce is undefined, meaning it's first initialization of the Scene, which we don't want to record (is this invariant correct at all times?!)
       ) {
         const elementsChange = nextSnapshot.options.didElementsChange
           ? ElementsChange.calculate(
@@ -119,8 +107,28 @@ export class Store implements IStore {
 
     // Reset props
     this.updatingSnapshot = false;
-    this.recordingChanges = false;
-    this.isRemoteUpdate = false;
+    this.capturingChanges = false;
+  }
+
+  public updateSnapshot(
+    scene: Scene,
+    appState: AppState,
+    isRemoteUpdate = false,
+  ) {
+    const nextElements = scene.getElementsMapIncludingDeleted();
+    const snapshotOptions: SnapshotOptions = {
+      isRemoteUpdate,
+      sceneVersionNonce: scene.getVersionNonce(),
+    };
+
+    // Efficiently clone the store snapshot
+    const nextSnapshot = this.snapshot.clone(
+      nextElements,
+      appState,
+      snapshotOptions,
+    );
+
+    return nextSnapshot;
   }
 
   public clear(): void {
@@ -133,9 +141,8 @@ export class Store implements IStore {
   }
 }
 
-type CloningOptions = {
+type SnapshotOptions = {
   isRemoteUpdate?: boolean;
-  editingElementId?: string;
   sceneVersionNonce?: number;
 };
 
@@ -163,16 +170,17 @@ class Snapshot {
    * @returns same instance if there are no changes detected, new Snapshot instance otherwise.
    */
   public clone(
-    nextElements: Map<string, ExcalidrawElement>,
-    nextAppState: AppState,
-    options: CloningOptions,
+    elements: Map<string, ExcalidrawElement>,
+    appState: AppState,
+    options: SnapshotOptions,
   ) {
     const { sceneVersionNonce } = options;
+    // TODO_UNDO: think about a case when scene could be the same, even though versionNonce is different (might be worth checking individual elements - altough there is the same problem, but occuring with lower probability)
     const didElementsChange =
-      this.options.sceneVersionNonce !== sceneVersionNonce; // TODO_UNDO: think about a case when scene could be the same, even though versionNonce is different (might be worth checking individual elements - altough there is same problem, but occuring with lower probability)
+      this.options.sceneVersionNonce !== sceneVersionNonce;
 
     // Not watching over everything from app state, just the relevant props
-    const nextAppStateSnapshot = getObservedAppState(nextAppState);
+    const nextAppStateSnapshot = getObservedAppState(appState);
     const didAppStateChange = this.detectChangedAppState(nextAppStateSnapshot);
 
     // Nothing has changed, so there is no point of continuing further
@@ -183,7 +191,11 @@ class Snapshot {
     // Clone only if there was really a change
     let nextElementsSnapshot = this.elements;
     if (didElementsChange) {
-      nextElementsSnapshot = this.createElementsSnapshot(nextElements, options);
+      nextElementsSnapshot = this.createElementsSnapshot(
+        elements,
+        appState,
+        options,
+      );
     }
 
     const snapshot = new Snapshot(nextElementsSnapshot, nextAppStateSnapshot, {
@@ -208,12 +220,14 @@ class Snapshot {
    */
   private createElementsSnapshot(
     nextElements: Map<string, ExcalidrawElement>,
-    options: CloningOptions,
+    appState: AppState,
+    options: SnapshotOptions,
   ) {
     const clonedElements = new Map();
 
     for (const [id, prevElement] of this.elements.entries()) {
-      // clone previous elements, never delete, in case nextElements would be just a subset of previous elements (i.e. collab)
+      // clone previous elements, never delete, in case nextElements would be just a subset of previous elements
+      // i.e. during collab, persist or whenenever get isDeleted elements cleaned
       clonedElements.set(id, prevElement);
     }
 
@@ -224,11 +238,15 @@ class Snapshot {
         !prevElement || // element was added
         (prevElement && prevElement.versionNonce !== nextElement.versionNonce) // element was updated
       ) {
+        // TODO_UNDO: this is only necessary on remote updates, thus could be separated (and also tested independently)
         // Special case, when we don't want to capture editing element from remote, if it's currently being edited
         // If we would capture it, we would capture yet uncommited element, which would break undo
         if (
           !!options.isRemoteUpdate &&
-          nextElement.id === options.editingElementId
+          (id === appState.editingElement?.id || // TODO_UNDO: won't this cause some concurrency issues again? should we compare also version here?
+            id === appState.resizingElement?.id ||
+            id === appState.multiElement?.id ||
+            id === appState.draggingElement?.id)
         ) {
           continue;
         }

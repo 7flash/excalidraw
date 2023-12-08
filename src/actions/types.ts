@@ -13,7 +13,7 @@ export type ActionSource = "ui" | "keyboard" | "contextMenu" | "api";
 export enum StoreAction {
   NONE = "none",
   UPDATE = "update",
-  RECORD = "record",
+  CAPTURE = "capture",
 }
 
 /** if false, the action should be prevented */

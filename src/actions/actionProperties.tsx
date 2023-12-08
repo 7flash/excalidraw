@@ -223,7 +223,7 @@ const changeFontSize = (
           ? [...newFontSizes][0]
           : fallbackValue ?? appState.currentItemFontSize,
     },
-    storeAction: StoreAction.RECORD,
+    storeAction: StoreAction.CAPTURE,
   };
 };
 
@@ -253,7 +253,7 @@ export const actionChangeStrokeColor = register({
         ...value,
       },
       storeAction: !!value.currentItemStrokeColor
-        ? StoreAction.RECORD
+        ? StoreAction.CAPTURE
         : StoreAction.NONE,
     };
   },
@@ -298,7 +298,7 @@ export const actionChangeBackgroundColor = register({
         ...value,
       },
       storeAction: !!value.currentItemBackgroundColor
-        ? StoreAction.RECORD
+        ? StoreAction.CAPTURE
         : StoreAction.NONE,
     };
   },
@@ -342,7 +342,7 @@ export const actionChangeFillStyle = register({
         }),
       ),
       appState: { ...appState, currentItemFillStyle: value },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => {
@@ -414,7 +414,7 @@ export const actionChangeStrokeWidth = register({
         }),
       ),
       appState: { ...appState, currentItemStrokeWidth: value },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => (
@@ -468,7 +468,7 @@ export const actionChangeSloppiness = register({
         }),
       ),
       appState: { ...appState, currentItemRoughness: value },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => (
@@ -518,7 +518,7 @@ export const actionChangeStrokeStyle = register({
         }),
       ),
       appState: { ...appState, currentItemStrokeStyle: value },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => (
@@ -572,7 +572,7 @@ export const actionChangeOpacity = register({
         true,
       ),
       appState: { ...appState, currentItemOpacity: value },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => (
@@ -730,7 +730,7 @@ export const actionChangeFontFamily = register({
         ...appState,
         currentItemFontFamily: value,
       },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => {
@@ -819,7 +819,7 @@ export const actionChangeTextAlign = register({
         ...appState,
         currentItemTextAlign: value,
       },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => {
@@ -899,7 +899,7 @@ export const actionChangeVerticalAlign = register({
       appState: {
         ...appState,
       },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => {
@@ -972,7 +972,7 @@ export const actionChangeRoundness = register({
         ...appState,
         currentItemRoundness: value,
       },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => {
@@ -1052,7 +1052,7 @@ export const actionChangeArrowhead = register({
           ? "currentItemStartArrowhead"
           : "currentItemEndArrowhead"]: value.type,
       },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ elements, appState, updateData }) => {

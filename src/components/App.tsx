@@ -1425,12 +1425,12 @@ class App extends React.Component<AppProps, AppState> {
           if (shouldUpdateStrokeColor) {
             this.syncActionResult({
               appState: { ...this.state, currentItemStrokeColor: color },
-              storeAction: StoreAction.RECORD,
+              storeAction: StoreAction.CAPTURE,
             });
           } else {
             this.syncActionResult({
               appState: { ...this.state, currentItemBackgroundColor: color },
-              storeAction: StoreAction.RECORD,
+              storeAction: StoreAction.CAPTURE,
             });
           }
         } else {
@@ -1471,9 +1471,9 @@ class App extends React.Component<AppProps, AppState> {
         this.scene.replaceAllElements(actionResult.elements);
 
         if (actionResult.storeAction === StoreAction.UPDATE) {
-          this.store.updateSnapshot();
-        } else if (actionResult.storeAction === StoreAction.RECORD) {
-          this.store.resumeRecording();
+          this.store.scheduleSnapshotting();
+        } else if (actionResult.storeAction === StoreAction.CAPTURE) {
+          this.store.resumeCapturing();
         }
       }
 
@@ -1486,9 +1486,9 @@ class App extends React.Component<AppProps, AppState> {
 
       if (actionResult.appState || editingElement || this.state.contextMenu) {
         if (actionResult.storeAction === StoreAction.UPDATE) {
-          this.store.updateSnapshot();
-        } else if (actionResult.storeAction === StoreAction.RECORD) {
-          this.store.resumeRecording();
+          this.store.scheduleSnapshotting();
+        } else if (actionResult.storeAction === StoreAction.CAPTURE) {
+          this.store.resumeCapturing();
         }
 
         let viewModeEnabled = actionResult?.appState?.viewModeEnabled || false;
@@ -1668,7 +1668,7 @@ class App extends React.Component<AppProps, AppState> {
     this.resetHistory();
     this.syncActionResult({
       ...scene,
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     });
   };
 
@@ -2439,7 +2439,7 @@ class App extends React.Component<AppProps, AppState> {
       this.files = { ...this.files, ...opts.files };
     }
 
-    this.store.resumeRecording();
+    this.store.resumeCapturing();
 
     const nextElementsToSelect =
       excludeElementsInFramesFromSelection(newElements);
@@ -2680,7 +2680,7 @@ class App extends React.Component<AppProps, AppState> {
       PLAIN_PASTE_TOAST_SHOWN = true;
     }
 
-    this.store.resumeRecording();
+    this.store.resumeCapturing();
   }
 
   setAppState: React.Component<any, AppState>["setState"] = (
@@ -2944,15 +2944,8 @@ class App extends React.Component<AppProps, AppState> {
       commitToStore?: SceneData["commitToStore"];
       isRemoteUpdate?: SceneData["isRemoteUpdate"];
     }) => {
-      // Always keep the store snapshot in sync
-      this.store.updateSnapshot();
-
       if (sceneData.commitToStore) {
-        this.store.resumeRecording();
-      }
-
-      if (sceneData.isRemoteUpdate) {
-        this.store.markRemoteUpdate();
+        this.store.resumeCapturing();
       }
 
       if (sceneData.appState) {
@@ -2961,6 +2954,11 @@ class App extends React.Component<AppProps, AppState> {
 
       if (sceneData.elements) {
         this.scene.replaceAllElements(sceneData.elements);
+
+        // TODO_UNDO: test this properly, as in the end it might be better to follow the same flow for remote updates as well
+        if (sceneData.isRemoteUpdate) {
+          this.store.updateSnapshot(this.scene, this.state, true);
+        }
       }
 
       if (sceneData.collaborators) {
@@ -3161,7 +3159,7 @@ class App extends React.Component<AppProps, AppState> {
                 this.state.editingLinearElement.elementId !==
                   selectedElements[0].id
               ) {
-                this.store.resumeRecording();
+                this.store.resumeCapturing();
                 this.setState({
                   editingLinearElement: new LinearElementEditor(
                     selectedElement,
@@ -3553,7 +3551,7 @@ class App extends React.Component<AppProps, AppState> {
           ]);
         }
         if (!isDeleted || isExistingElement) {
-          this.store.resumeRecording();
+          this.store.resumeCapturing();
         }
 
         this.setState({
@@ -3845,7 +3843,7 @@ class App extends React.Component<AppProps, AppState> {
         (!this.state.editingLinearElement ||
           this.state.editingLinearElement.elementId !== selectedElements[0].id)
       ) {
-        this.store.resumeRecording();
+        this.store.resumeCapturing();
         this.setState({
           editingLinearElement: new LinearElementEditor(
             selectedElements[0],
@@ -6752,7 +6750,7 @@ class App extends React.Component<AppProps, AppState> {
 
       if (isLinearElement(draggingElement)) {
         if (draggingElement!.points.length > 1) {
-          this.store.resumeRecording();
+          this.store.resumeCapturing();
         }
         const pointerCoords = viewportCoordsToSceneCoords(
           childEvent,
@@ -6987,7 +6985,7 @@ class App extends React.Component<AppProps, AppState> {
       }
 
       if (resizingElement) {
-        this.store.resumeRecording();
+        this.store.resumeCapturing();
       }
 
       if (resizingElement && isInvisiblySmallElement(resizingElement)) {
@@ -7294,7 +7292,7 @@ class App extends React.Component<AppProps, AppState> {
           this.state.selectedElementIds,
         )
       ) {
-        this.store.resumeRecording();
+        this.store.resumeCapturing();
       }
 
       if (pointerDownState.drag.hasOccurred || isResizing || isRotating) {
@@ -7400,7 +7398,7 @@ class App extends React.Component<AppProps, AppState> {
       return ele;
     });
 
-    this.store.resumeRecording();
+    this.store.resumeCapturing();
     this.scene.replaceAllElements(elements);
   };
 
@@ -7948,7 +7946,7 @@ class App extends React.Component<AppProps, AppState> {
                 isLoading: false,
               },
               replaceFiles: true,
-              storeAction: StoreAction.RECORD,
+              storeAction: StoreAction.CAPTURE,
             });
             return;
           } catch (error: any) {
@@ -8048,7 +8046,7 @@ class App extends React.Component<AppProps, AppState> {
             isLoading: false,
           },
           replaceFiles: true,
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
       } else if (ret.type === MIME_TYPES.excalidrawlib) {
         await this.library

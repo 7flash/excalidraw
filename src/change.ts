@@ -183,7 +183,7 @@ export class AppStateChange implements Change<AppState> {
 
     const newAppState = {
       ...appState,
-      ...this.delta.to,
+      ...this.delta.to, // TODO_UNDO: probably shouldn't apply element related changes
     };
 
     return [newAppState, constainsVisibleChanges];
@@ -275,14 +275,17 @@ export class AppStateChange implements Change<AppState> {
       return;
     }
 
+    // TODO_UNDO: it could have been visible before (and now it's not)
+    // TODO_UNDO: it could have been selected 
     for (const id of Object.keys(deltaIds)) {
       const element = elements.get(id);
 
       if (element && !element.isDeleted) {
-        if (appState.selectedElementIds[id]) {
-          // Element is already selected
-          return;
-        }
+        // // TODO_UNDO: breaks multi selection
+        // if (appState.selectedElementIds[id]) {
+        //   // Element is already selected
+        //   return;
+        // }
 
         // Found related visible element!
         return true;
@@ -517,8 +520,8 @@ export class ElementsChange implements Change<Map<string, ExcalidrawElement>> {
    */
   public applyLatestChanges(
     elements: Map<string, ExcalidrawElement>,
+    modifierOptions: "from" | "to",
   ): ElementsChange {
-    const toBeModifiedPart = "to";
     const modifier =
       (element: ExcalidrawElement) => (partial: Partial<ExcalidrawElement>) => {
         const modifiedPartial: { [key: string]: unknown } = {};
@@ -540,7 +543,7 @@ export class ElementsChange implements Change<Map<string, ExcalidrawElement>> {
           delta.from,
           delta.to,
           modifier(existingElement),
-          toBeModifiedPart,
+          modifierOptions,
         );
 
         deltas.set(id, modifiedDelta);

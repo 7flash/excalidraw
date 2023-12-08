@@ -156,7 +156,7 @@ export const actionGroup = register({
         ),
       },
       elements: nextElements,
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   contextItemLabel: "labels.group",
@@ -251,7 +251,7 @@ export const actionUngroup = register({
     return {
       appState: { ...appState, ...updateAppState },
       elements: nextElements,
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   keyTest: (event) =>

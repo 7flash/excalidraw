@@ -47,7 +47,7 @@ export const actionSelectAll = register({
             ? new LinearElementEditor(elements[0], app.scene)
             : null,
       },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   contextItemLabel: "labels.selectAll",

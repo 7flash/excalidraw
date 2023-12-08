@@ -654,7 +654,7 @@ export class LinearElementEditor {
         });
         ret.didAddPoint = true;
       }
-      store.resumeRecording();
+      store.resumeCapturing();
       ret.linearElementEditor = {
         ...linearElementEditor,
         pointerDownState: {

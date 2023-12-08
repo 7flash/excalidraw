@@ -150,7 +150,7 @@ export const actionPasteStyles = register({
         }
         return element;
       }),
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   contextItemLabel: "labels.pasteStyles",

@@ -107,7 +107,7 @@ describe("collaboration", () => {
     // As it was introduced #2270, undo is a noop here, but we might want to re-enable it,
     // since inability to undo your own deletions could be a bigger upsetting factor here
     await waitFor(() => {
-      expect(API.getUndoStack().length).toBe(0);
+      expect(h.history.isUndoStackEmpty).toBeTruthy();
       expect(h.elements).toEqual([expect.objectContaining({ id: "A" })]);
       expect(Array.from(h.store.snapshot.elements.values())).toEqual([
         expect.objectContaining({ id: "A" }),

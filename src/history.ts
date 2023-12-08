@@ -27,13 +27,10 @@ export class History {
     elementsChange: ElementsChange,
     appStateChange: AppStateChange,
   ) {
-    const nextEntry = HistoryEntry.create(
-      appStateChange.inverse(),
-      elementsChange.inverse(),
-    );
+    const entry = HistoryEntry.create(appStateChange, elementsChange);
 
-    if (!nextEntry.isEmpty()) {
-      this.undoStack.push(nextEntry);
+    if (!entry.isEmpty()) {
+      this.undoStack.push(entry);
 
       // As a new entry was pushed, we invalidate the redo stack
       this.redoStack.length = 0;
@@ -90,10 +87,10 @@ export class History {
     const undoEntry = this.undoStack.pop();
 
     if (undoEntry !== undefined) {
-      const redoEntry = undoEntry.inverse().applyLatestChanges(elements);
+      const redoEntry = undoEntry.applyLatestChanges(elements, "to");
       this.redoStack.push(redoEntry);
 
-      return undoEntry;
+      return undoEntry.inverse();
     }
 
     return null;
@@ -109,8 +106,9 @@ export class History {
     const redoEntry = this.redoStack.pop();
 
     if (redoEntry !== undefined) {
-      const undoEntry = redoEntry.inverse().applyLatestChanges(elements);
+      const undoEntry = redoEntry.applyLatestChanges(elements, "from");
       this.undoStack.push(undoEntry);
+
       return redoEntry;
     }
 
@@ -159,9 +157,12 @@ export class HistoryEntry {
    */
   public applyLatestChanges(
     elements: Map<string, ExcalidrawElement>,
+    modifierOptions: "from" | "to",
   ): HistoryEntry {
-    const updatedElementsChange =
-      this.elementsChange.applyLatestChanges(elements);
+    const updatedElementsChange = this.elementsChange.applyLatestChanges(
+      elements,
+      modifierOptions,
+    );
 
     return HistoryEntry.create(this.appStateChange, updatedElementsChange);
   }

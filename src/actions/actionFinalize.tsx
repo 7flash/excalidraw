@@ -50,7 +50,7 @@ export const actionFinalize = register({
             cursorButton: "up",
             editingLinearElement: null,
           },
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         };
       }
     }
@@ -193,8 +193,8 @@ export const actionFinalize = register({
       },
       storeAction:
         appState.activeTool.type === "freedraw"
-          ? StoreAction.RECORD
-          : StoreAction.UPDATE,
+          ? StoreAction.CAPTURE
+          : StoreAction.NONE,
     };
   },
   keyTest: (event, appState) =>
