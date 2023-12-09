@@ -346,7 +346,6 @@ describe("history", () => {
             strokeColor: blue,
           }),
         ],
-        isRemoteUpdate: true,
       });
 
       Keyboard.undo();
@@ -384,7 +383,6 @@ describe("history", () => {
             strokeColor: yellow,
           }),
         ],
-        isRemoteUpdate: true,
       });
 
       Keyboard.undo();
@@ -431,7 +429,6 @@ describe("history", () => {
             backgroundColor: yellow,
           }),
         ],
-        isRemoteUpdate: true,
       });
 
       // At this point our entry gets updated from `red` -> `blue` into `red` -> `yellow`
@@ -447,7 +444,6 @@ describe("history", () => {
             backgroundColor: violet,
           }),
         ],
-        isRemoteUpdate: true,
       });
 
       // At this point our (inversed) entry gets updated from `red` -> `yellow` into `violet` -> `yellow`
@@ -636,7 +632,6 @@ describe("history", () => {
             strokeColor: blue,
           }),
         ],
-        isRemoteUpdate: true,
       });
 
       mouse.moveTo(60, 60);
@@ -677,7 +672,16 @@ describe("history", () => {
     });
 
     // TODO_UNDO: testing testing David' concurrency issues
-    // TODO_UNDO: testing edge cases - already selected items, clearing of redo stack, expected reference values in deltas, align actions bugs, caching / cloning # of calls from colllab + correct disposal, state of the stored changes and their deltas, how updateScene without 
+    // TODO_UNDO: testing edge cases - already selected items
+    // TODO_UNDO: testing edge cases - clearing of redo stack, expected reference values in deltas, align actions bugs, caching / cloning in snapshot disposal, state of the stored changes and their deltas, update scene without isRemoteUpdat
+    // TODO_UNDO: testing edge cases - already selected items
+    // TODO_UNDO: testing edge cases - clearing of redo stack
+    // TODO_UNDO: testing edge cases - expected reference values in deltas
+    // TODO_UNDO: testing edge cases - align actions bugs
+    // TODO_UNDO: testing edge cases - caching / cloning of snapshot and its disposal
+    // TODO_UNDO: testing edge cases - state of the stored changes and their deltas
+    // TODO_UNDO: testing edge cases - update scene without isRemoteUpdat
+    // TODO_UNDO: test "UPDATE" actions as they become undoable, but are necessary for the diff calculation and unexpect during undo / redo (also test change CAPTURE)
     // TODO_UNDO: testing linear element + editor (multiple, single clients / empty undo / redos / selection)
     // TODO_UNDO: testing z-index actions (after Ryans PR)
     // TODO_UNDO: test out number of store calls in collab

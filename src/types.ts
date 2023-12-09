@@ -460,7 +460,7 @@ export type SceneData = {
   appState?: ImportedDataState["appState"];
   collaborators?: Map<string, Collaborator>;
   commitToStore?: boolean;
-  isRemoteUpdate?: boolean;
+  skipSnapshotUpdate?: boolean;
 };
 
 export enum UserIdleState {

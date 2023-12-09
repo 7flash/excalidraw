@@ -12,7 +12,7 @@ export type ActionSource = "ui" | "keyboard" | "contextMenu" | "api";
 
 export enum StoreAction {
   NONE = "none",
-  UPDATE = "update",
+  UPDATE = "update", // TODO_UNDO: think about better naming as this one is confusing
   CAPTURE = "capture",
 }
 

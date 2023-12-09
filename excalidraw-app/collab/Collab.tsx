@@ -647,7 +647,6 @@ class Collab extends PureComponent<Props, CollabState> {
   private handleRemoteSceneUpdate = (elements: ReconciledElements) => {
     this.excalidrawAPI.updateScene({
       elements,
-      isRemoteUpdate: true,
     });
 
     this.loadImageFiles();

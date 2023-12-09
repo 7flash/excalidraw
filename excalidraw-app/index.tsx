@@ -590,6 +590,7 @@ const ExcalidrawWrapper = () => {
           if (didChange) {
             excalidrawAPI.updateScene({
               elements,
+              skipSnapshotUpdate: true,
             });
           }
         }

@@ -1434,6 +1434,7 @@ class App extends React.Component<AppProps, AppState> {
             });
           }
         } else {
+          // TODO_UNDO: test if we didn't regress here - shouldn't this commit to store?
           this.updateScene({
             elements: this.scene.getElementsIncludingDeleted().map((el) => {
               if (this.state.selectedElementIds[el.id]) {
@@ -1471,7 +1472,7 @@ class App extends React.Component<AppProps, AppState> {
         this.scene.replaceAllElements(actionResult.elements);
 
         if (actionResult.storeAction === StoreAction.UPDATE) {
-          this.store.scheduleSnapshotting();
+          this.store.scheduleSnapshotUpdate();
         } else if (actionResult.storeAction === StoreAction.CAPTURE) {
           this.store.resumeCapturing();
         }
@@ -1486,7 +1487,7 @@ class App extends React.Component<AppProps, AppState> {
 
       if (actionResult.appState || editingElement || this.state.contextMenu) {
         if (actionResult.storeAction === StoreAction.UPDATE) {
-          this.store.scheduleSnapshotting();
+          this.store.scheduleSnapshotUpdate();
         } else if (actionResult.storeAction === StoreAction.CAPTURE) {
           this.store.resumeCapturing();
         }
@@ -2942,7 +2943,7 @@ class App extends React.Component<AppProps, AppState> {
       appState?: Pick<AppState, K> | null;
       collaborators?: SceneData["collaborators"];
       commitToStore?: SceneData["commitToStore"];
-      isRemoteUpdate?: SceneData["isRemoteUpdate"];
+      skipSnapshotUpdate?: SceneData["skipSnapshotUpdate"];
     }) => {
       if (sceneData.commitToStore) {
         this.store.resumeCapturing();
@@ -2953,12 +2954,11 @@ class App extends React.Component<AppProps, AppState> {
       }
 
       if (sceneData.elements) {
-        this.scene.replaceAllElements(sceneData.elements);
-
-        // TODO_UNDO: test this properly, as in the end it might be better to follow the same flow for remote updates as well
-        if (sceneData.isRemoteUpdate) {
-          this.store.updateSnapshot(this.scene, this.state, true);
+        if (!sceneData.skipSnapshotUpdate) {
+          this.store.scheduleSnapshotUpdate();
         }
+
+        this.scene.replaceAllElements(sceneData.elements);
       }
 
       if (sceneData.collaborators) {
@@ -4663,6 +4663,7 @@ class App extends React.Component<AppProps, AppState> {
             this.state,
           ),
         },
+        skipSnapshotUpdate: true, // TODO_UNDO: test if we didn't regress here
       });
       return;
     }
