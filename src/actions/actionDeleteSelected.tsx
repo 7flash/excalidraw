@@ -110,7 +110,7 @@ export const actionDeleteSelected = register({
             ...nextAppState,
             editingLinearElement: null,
           },
-          storeAction: StoreAction.NONE,
+          storeAction: StoreAction.UPDATE,
         };
       }
 

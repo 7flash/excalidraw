@@ -31,8 +31,7 @@ export const actionToggleLinearEditor = register({
         ...appState,
         editingLinearElement,
       },
-      // Why not to record this action?
-      storeAction: StoreAction.NONE,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   contextItemLabel: (elements, appState, app) => {

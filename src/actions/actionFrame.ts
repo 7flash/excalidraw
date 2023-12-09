@@ -36,8 +36,7 @@ export const actionSelectAllElementsInFrame = register({
             return acc;
           }, {} as Record<ExcalidrawElement["id"], true>),
         },
-        // Why not to record these actions?
-        storeAction: StoreAction.NONE,
+        storeAction: StoreAction.CAPTURE,
       };
     }
 
@@ -67,7 +66,7 @@ export const actionRemoveAllElementsFromFrame = register({
             [selectedFrame.id]: true,
           },
         },
-        storeAction: StoreAction.NONE,
+        storeAction: StoreAction.CAPTURE,
       };
     }
 

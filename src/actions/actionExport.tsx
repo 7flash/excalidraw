@@ -27,7 +27,7 @@ export const actionChangeProjectName = register({
   perform: (_elements, appState, value) => {
     return {
       appState: { ...appState, name: value },
-      storeAction: StoreAction.NONE,
+      storeAction: StoreAction.UPDATE,
     };
   },
   PanelComponent: ({ appState, updateData, appProps, data }) => (

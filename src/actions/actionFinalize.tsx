@@ -194,7 +194,7 @@ export const actionFinalize = register({
       storeAction:
         appState.activeTool.type === "freedraw"
           ? StoreAction.CAPTURE
-          : StoreAction.NONE,
+          : StoreAction.UPDATE,
     };
   },
   keyTest: (event, appState) =>
