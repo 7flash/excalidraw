@@ -255,6 +255,7 @@ import {
   isTestEnv,
   easeOut,
   isShallowEqual,
+  arrayToMap,
 } from "../utils";
 import {
   embeddableURLValidator,
@@ -1669,7 +1670,7 @@ class App extends React.Component<AppProps, AppState> {
     this.resetHistory();
     this.syncActionResult({
       ...scene,
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.UPDATE, // TODO_UNDO: double-check for regression
     });
   };
 
@@ -2102,7 +2103,10 @@ class App extends React.Component<AppProps, AppState> {
       );
     }
 
-    this.store.capture(this.scene, this.state);
+    this.store.capture(
+      arrayToMap(this.scene.getElementsIncludingDeleted()),
+      this.state,
+    );
 
     // Do not notify consumers if we're still loading the scene. Among other
     // potential issues, this fixes a case where the tab isn't focused during
@@ -2945,8 +2949,30 @@ class App extends React.Component<AppProps, AppState> {
       commitToStore?: SceneData["commitToStore"];
       skipSnapshotUpdate?: SceneData["skipSnapshotUpdate"];
     }) => {
-      if (sceneData.commitToStore) {
-        this.store.resumeCapturing();
+      if (
+        !sceneData.skipSnapshotUpdate &&
+        (sceneData.elements || sceneData.appState)
+      ) {
+        this.store.scheduleSnapshotUpdate();
+
+        if (sceneData.commitToStore) {
+          this.store.resumeCapturing();
+        }
+
+        // We need to filter out yet uncomitted local elements
+        // Once we will be exchanging just store increments and updating changes this won't be necessary
+        const localElements = this.scene.getElementsIncludingDeleted();
+        const nextElements = this.store.ignoreUncomittedElements(
+          arrayToMap(localElements),
+          arrayToMap(sceneData.elements || localElements), // Here we expect all next elements
+        );
+
+        const nextAppState: AppState = {
+          ...this.state,
+          ...(sceneData.appState || {}), // Here we expect just partial appState
+        };
+
+        this.store.capture(nextElements, nextAppState);
       }
 
       if (sceneData.appState) {
@@ -2954,10 +2980,6 @@ class App extends React.Component<AppProps, AppState> {
       }
 
       if (sceneData.elements) {
-        if (!sceneData.skipSnapshotUpdate) {
-          this.store.scheduleSnapshotUpdate();
-        }
-
         this.scene.replaceAllElements(sceneData.elements);
       }
 

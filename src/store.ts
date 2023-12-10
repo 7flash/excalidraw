@@ -3,7 +3,6 @@ import { AppStateChange, ElementsChange } from "./change";
 import { deepCopyElement } from "./element/newElement";
 import { ExcalidrawElement } from "./element/types";
 import { Emitter } from "./emitter";
-import Scene from "./scene/Scene";
 import { AppState, ObservedAppState } from "./types";
 import { isShallowEqual } from "./utils";
 
@@ -31,12 +30,12 @@ const getObservedAppState = (appState: AppState): ObservedAppState => {
  */
 export interface IStore {
   /**
-   * Capture changes to the @param scene and @param appState by diff calculation and emitting resulting changes as store increment.
+   * Capture changes to the @param elements and @param appState by diff calculation and emitting resulting changes as store increment.
    * In case the property `onlyUpdatingSnapshot` is set, it will only update the store snapshot, without calculating diffs.
    *
    * @emits StoreIncrementEvent
    */
-  capture(scene: Scene, appState: AppState): void;
+  capture(elements: Map<string, ExcalidrawElement>, appState: AppState): void;
 
   /**
    * Listens to the store increments, emitted by the capture method.
@@ -82,22 +81,22 @@ export class Store implements IStore {
     this.capturingChanges = true;
   }
 
-  public capture(scene: Scene, appState: AppState): void {
+  public capture(
+    elements: Map<string, ExcalidrawElement>,
+    appState: AppState,
+  ): void {
     // Quick exit for irrelevant changes
     if (!this.capturingChanges && !this.updatingSnapshot) {
       return;
     }
 
     try {
-      const nextSnapshot = this.updateSnapshot(scene, appState);
+      const nextSnapshot = this.snapshot.clone(elements, appState);
 
       // Optimisation, don't continue if nothing has changed
       if (this.snapshot !== nextSnapshot) {
         // Calculate and record the changes based on the previous and next snapshot
-        if (
-          this.capturingChanges &&
-          !this.snapshot.isEmpty() // Special case on first initialization of the Scene, which we don't want to record
-        ) {
+        if (this.capturingChanges) {
           const elementsChange = nextSnapshot.meta.didElementsChange
             ? ElementsChange.calculate(
                 this.snapshot.elements,
@@ -113,6 +112,7 @@ export class Store implements IStore {
             : AppStateChange.empty();
 
           if (!elementsChange.isEmpty() || !appStateChange.isEmpty()) {
+            // Notify listeners with the increment
             this.onStoreIncrementEmitter.trigger(
               elementsChange,
               appStateChange,
@@ -128,6 +128,36 @@ export class Store implements IStore {
       this.updatingSnapshot = false;
       this.capturingChanges = false;
     }
+  }
+
+  public ignoreUncomittedElements(
+    prevElements: Map<string, ExcalidrawElement>,
+    nextElements: Map<string, ExcalidrawElement>,
+  ) {
+    for (const [id, prevElement] of prevElements.entries()) {
+      const nextElement = nextElements.get(id);
+
+      if (!nextElement) {
+        // Nothing to care about here, elements were forcefully updated
+        continue;
+      }
+
+      const elementSnapshot = this.snapshot.elements.get(id);
+
+      // Uncomitted element's snapshot doesn't exist, or its snapshot has lower version than the local element
+      if (
+        !elementSnapshot ||
+        (elementSnapshot && elementSnapshot.version < prevElement.version)
+      ) {
+        if (elementSnapshot) {
+          nextElements.set(id, elementSnapshot);
+        } else {
+          nextElements.delete(id);
+        }
+      }
+    }
+
+    return nextElements;
   }
 
   public listen(
@@ -147,27 +177,7 @@ export class Store implements IStore {
     this.clear();
     this.onStoreIncrementEmitter.destroy();
   }
-
-  private updateSnapshot(scene: Scene, appState: AppState) {
-    const nextElements = scene.getElementsMapIncludingDeleted();
-    const snapshotOptions = {
-      sceneVersionNonce: scene.getVersionNonce(),
-    };
-
-    // Efficiently clone the store snapshot
-    const nextSnapshot = this.snapshot.clone(
-      nextElements,
-      appState,
-      snapshotOptions,
-    );
-
-    return nextSnapshot;
-  }
 }
-
-type SnapshotOptions = {
-  sceneVersionNonce?: number;
-};
 
 class Snapshot {
   private constructor(
@@ -176,10 +186,11 @@ class Snapshot {
     public readonly meta: {
       didElementsChange: boolean;
       didAppStateChange: boolean;
-      sceneVersionNonce?: number;
+      isEmpty?: boolean;
     } = {
       didElementsChange: false,
       didAppStateChange: false,
+      isEmpty: false,
     },
   ) {}
 
@@ -187,11 +198,12 @@ class Snapshot {
     return new Snapshot(
       new Map(),
       getObservedAppState(getDefaultAppState() as AppState),
+      { didElementsChange: false, didAppStateChange: false, isEmpty: true },
     );
   }
 
   public isEmpty() {
-    return !this.meta.sceneVersionNonce;
+    return this.meta.isEmpty;
   }
 
   /**
@@ -199,15 +211,8 @@ class Snapshot {
    *
    * @returns same instance if there are no changes detected, new Snapshot instance otherwise.
    */
-  public clone(
-    elements: Map<string, ExcalidrawElement>,
-    appState: AppState,
-    options: SnapshotOptions,
-  ) {
-    const { sceneVersionNonce } = options;
-    // TODO_UNDO: think about a case when scene could be the same, even though versionNonce is different (might be worth checking individual elements - altough there is the same problem, but occuring with lower probability)
-    // TODO_UNDO: coming to a scene after while, moving element, undo isn't possible
-    const didElementsChange = this.meta.sceneVersionNonce !== sceneVersionNonce;
+  public clone(elements: Map<string, ExcalidrawElement>, appState: AppState) {
+    const didElementsChange = this.detectChangedElements(elements);
 
     // Not watching over everything from app state, just the relevant props
     const nextAppStateSnapshot = getObservedAppState(appState);
@@ -221,16 +226,48 @@ class Snapshot {
     // Clone only if there was really a change
     let nextElementsSnapshot = this.elements;
     if (didElementsChange) {
-      nextElementsSnapshot = this.createElementsSnapshot(elements, appState);
+      nextElementsSnapshot = this.createElementsSnapshot(elements);
     }
 
     const snapshot = new Snapshot(nextElementsSnapshot, nextAppStateSnapshot, {
       didElementsChange,
       didAppStateChange,
-      sceneVersionNonce,
     });
 
     return snapshot;
+  }
+
+  /**
+   * Detect if there any changed elements.
+   *
+   * NOTE: we shouldn't use `sceneVersionNonce` instead, as we need to calls this before the scene updates.
+   */
+  private detectChangedElements(nextElements: Map<string, ExcalidrawElement>) {
+    if (this.elements === nextElements) {
+      return false;
+    }
+
+    if (this.elements.size !== nextElements.size) {
+      return true;
+    }
+
+    // loop from right to left as changes are likelier to happen on new elements
+    const keys = Array.from(nextElements.keys());
+
+    for (let i = keys.length - 1; i >= 0; i--) {
+      const prev = this.elements.get(keys[i]);
+      const next = nextElements.get(keys[i]);
+      if (
+        !prev ||
+        !next ||
+        prev.id !== next.id ||
+        prev.versionNonce !== next.versionNonce
+      ) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private detectChangedAppState(observedAppState: ObservedAppState) {
@@ -244,10 +281,7 @@ class Snapshot {
   /**
    * Perform structural clone, cloning only elements that changed.
    */
-  private createElementsSnapshot(
-    nextElements: Map<string, ExcalidrawElement>,
-    appState: AppState,
-  ) {
+  private createElementsSnapshot(nextElements: Map<string, ExcalidrawElement>) {
     const clonedElements = new Map();
 
     for (const [id, prevElement] of this.elements.entries()) {
@@ -264,17 +298,6 @@ class Snapshot {
         !prevElement || // element was added
         (prevElement && prevElement.versionNonce !== nextElement.versionNonce) // element was updated
       ) {
-        // Special case, when we don't want to capture editing element from remote, if it's currently being edited
-        // If we would capture it, we would capture yet uncommited element, which would break the diff calculation
-        // TODO_UNDO: multiElement? async image transformation? other async actions?
-        if (
-          id === appState.editingElement?.id ||
-          id === appState.resizingElement?.id ||
-          id === appState.draggingElement?.id
-        ) {
-          continue;
-        }
-
         clonedElements.set(id, deepCopyElement(nextElement));
       }
     }

@@ -624,14 +624,13 @@ describe("history", () => {
       mouse.moveTo(30, 30);
 
       // Simulate remote update
+      const rect = API.createElement({
+        type: "rectangle",
+        strokeColor: blue,
+      });
+
       excalidrawAPI.updateScene({
-        elements: [
-          ...h.elements,
-          API.createElement({
-            type: "rectangle",
-            strokeColor: blue,
-          }),
-        ],
+        elements: [...h.elements, rect],
       });
 
       mouse.moveTo(60, 60);
@@ -647,11 +646,7 @@ describe("history", () => {
           type: "freedraw",
           isDeleted: true,
         }),
-        expect.objectContaining({
-          id: h.elements[1].id,
-          type: "rectangle",
-          strokeColor: blue,
-        }),
+        expect.objectContaining({ ...rect }),
       ]);
 
       Keyboard.redo();
@@ -663,27 +658,190 @@ describe("history", () => {
           type: "freedraw",
           isDeleted: false,
         }),
-        expect.objectContaining({
-          id: h.elements[1].id,
-          type: "rectangle",
-          strokeColor: blue,
-        }),
+        expect.objectContaining({ ...rect }),
       ]);
     });
 
-    // TODO_UNDO: testing testing David' concurrency issues
-    // TODO_UNDO: testing edge cases - already selected items
-    // TODO_UNDO: testing edge cases - clearing of redo stack, expected reference values in deltas, align actions bugs, caching / cloning in snapshot disposal, state of the stored changes and their deltas, update scene without isRemoteUpdat
-    // TODO_UNDO: testing edge cases - already selected items
+    // TODO_UNDO: tests like this might need to go through some util, as expectations in redo / undo are duplicated
+    it("remote update does not interfere with in progress dragging", async () => {
+      const rect1 = UI.createElement("rectangle", { x: 10, y: 10 });
+      const rect2 = UI.createElement("rectangle", { x: 30, y: 30 });
+
+      mouse.select([rect1, rect2]);
+      mouse.downAt(20, 20);
+      mouse.moveTo(50, 50);
+
+      assertSelectedElements(rect1, rect2);
+      expect(API.getUndoStack().length).toBe(4);
+
+      const rect3 = API.createElement({
+        type: "rectangle",
+        strokeColor: blue,
+      });
+
+      // Simulate remote update
+      excalidrawAPI.updateScene({
+        elements: [...h.elements, rect3],
+      });
+
+      mouse.moveTo(100, 100);
+      mouse.up();
+
+      expect(API.getUndoStack().length).toBe(5);
+      expect(API.getRedoStack().length).toBe(0);
+      assertSelectedElements(rect1, rect2);
+      expect(h.elements).toEqual([
+        expect.objectContaining({
+          id: rect1.id,
+          x: 90,
+          y: 90,
+          isDeleted: false,
+        }),
+        expect.objectContaining({
+          id: rect2.id,
+          x: 110,
+          y: 110,
+          isDeleted: false,
+        }),
+        expect.objectContaining({ ...rect3 }),
+      ]);
+
+      Keyboard.undo();
+      assertSelectedElements(rect1, rect2);
+      expect(h.elements).toEqual([
+        expect.objectContaining({
+          id: rect1.id,
+          x: 10,
+          y: 10,
+          isDeleted: false,
+        }),
+        expect.objectContaining({
+          id: rect2.id,
+          x: 30,
+          y: 30,
+          isDeleted: false,
+        }),
+        expect.objectContaining({ ...rect3 }),
+      ]);
+
+      Keyboard.undo();
+      assertSelectedElements(rect1);
+
+      Keyboard.undo();
+      assertSelectedElements(rect2);
+
+      Keyboard.undo();
+      assertSelectedElements(rect1);
+      expect(h.elements).toEqual([
+        expect.objectContaining({
+          id: rect1.id,
+          x: 10,
+          y: 10,
+          isDeleted: false,
+        }),
+        expect.objectContaining({
+          id: rect2.id,
+          x: 30,
+          y: 30,
+          isDeleted: true,
+        }),
+        expect.objectContaining({ ...rect3 }),
+      ]);
+
+      Keyboard.undo();
+      assertSelectedElements();
+      expect(h.elements).toEqual([
+        expect.objectContaining({
+          id: rect1.id,
+          x: 10,
+          y: 10,
+          isDeleted: true,
+        }),
+        expect.objectContaining({
+          id: rect2.id,
+          x: 30,
+          y: 30,
+          isDeleted: true,
+        }),
+        expect.objectContaining({ ...rect3 }),
+      ]);
+
+      Keyboard.redo();
+      assertSelectedElements(rect1);
+      expect(h.elements).toEqual([
+        expect.objectContaining({
+          id: rect1.id,
+          x: 10,
+          y: 10,
+          isDeleted: false,
+        }),
+        expect.objectContaining({
+          id: rect2.id,
+          x: 30,
+          y: 30,
+          isDeleted: true,
+        }),
+        expect.objectContaining({ ...rect3 }),
+      ]);
+
+      Keyboard.redo();
+      assertSelectedElements(rect2);
+
+      Keyboard.redo();
+      assertSelectedElements(rect1);
+
+      Keyboard.redo();
+      assertSelectedElements(rect1, rect2);
+      expect(h.elements).toEqual([
+        expect.objectContaining({
+          id: rect1.id,
+          x: 10,
+          y: 10,
+          isDeleted: false,
+        }),
+        expect.objectContaining({
+          id: rect2.id,
+          x: 30,
+          y: 30,
+          isDeleted: false,
+        }),
+        expect.objectContaining({ ...rect3 }),
+      ]);
+
+      Keyboard.redo();
+      expect(API.getUndoStack().length).toBe(5);
+      expect(API.getRedoStack().length).toBe(0);
+      assertSelectedElements(rect1, rect2);
+      expect(h.elements).toEqual([
+        expect.objectContaining({
+          id: rect1.id,
+          x: 90,
+          y: 90,
+          isDeleted: false,
+        }),
+        expect.objectContaining({
+          id: rect2.id,
+          x: 110,
+          y: 110,
+          isDeleted: false,
+        }),
+        expect.objectContaining({ ...rect3 }),
+      ]);
+    });
+
+    // TODO_UNDO: testing testing David' concurrency issues (dragging, image, etc.)
+    // TODO_UNDO: test "UPDATE" actions as they become undoable (), but are necessary for the diff calculation and unexpect during undo / redo (also test change CAPTURE)
+    // TODO_UNDO: testing edge cases - bound elements get often messed up (i.e.  when client 1 adds it to client2 element and client 2 undos)
+    // TODO_UNDO: testing edge cases - empty undos - when item are already selected
+    // TODO_UNDO: testing z-index actions (after Ryans PR)
+    // TODO_UNDO: testing linear element + editor (multiple, single clients / empty undo / redos / selection)
+    // TODO_UNDO: testing edge cases - align actions bugs
+    // TODO_UNDO: testing edge cases - unit testing quick quick reference checks and exits
+    // TODO_UNDO: testing edge cases - add what elements should not contain (notEqual)
     // TODO_UNDO: testing edge cases - clearing of redo stack
     // TODO_UNDO: testing edge cases - expected reference values in deltas
-    // TODO_UNDO: testing edge cases - align actions bugs
     // TODO_UNDO: testing edge cases - caching / cloning of snapshot and its disposal
-    // TODO_UNDO: testing edge cases - state of the stored changes and their deltas
-    // TODO_UNDO: testing edge cases - update scene without isRemoteUpdat
-    // TODO_UNDO: test "UPDATE" actions as they become undoable, but are necessary for the diff calculation and unexpect during undo / redo (also test change CAPTURE)
-    // TODO_UNDO: testing linear element + editor (multiple, single clients / empty undo / redos / selection)
-    // TODO_UNDO: testing z-index actions (after Ryans PR)
+    // TODO_UNDO: testing edge cases - state of the stored increments / changes and their deltas
     // TODO_UNDO: test out number of store calls in collab
   });
 });
